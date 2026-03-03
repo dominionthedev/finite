@@ -1,0 +1,25 @@
+# Binaries
+alolyte
+*.exe
+*.out
+
+# Build output
+/dist/
+/bin/
+
+# Go
+*.test
+*.prof
+go.sum
+
+# Generated SVG output
+output.svg
+*.svg
+!assets/widgets/*.svg
+
+# Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
