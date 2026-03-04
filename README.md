@@ -85,10 +85,11 @@ alolyte/
 
 - [x] `widget` — SVG file loader with Go template param support
 - [x] `widget` — Registry to scan and index a widgets folder
-- [ ] `instance` — Placement with position, scale, rotation, params
-- [ ] `doc` — Document canvas with `Add`, `Render`, `Export`
+- [x] `instance` — Placement with position, scale, rotation, params
+- [x] `doc` — Document canvas with `Add`, `Render`, `Export`
 - [ ] Tests for all three packages
 - [ ] Built-in widget collection (`gradient_orb`, `aurora_background`, `geometric_ring`, `glow_text`, `noise_texture`)
+- [ ] Example usage in `examples/` folder
 - [ ] CLI: `alolyte list`, `alolyte preview`, `alolyte render`, `alolyte new`
 - [ ] Terminal image preview via Charm Mosaics
 - [ ] First real example output — animated logo mark
