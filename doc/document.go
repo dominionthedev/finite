@@ -4,19 +4,25 @@ import (
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/leraniode/alolyte/instance"
 )
 
+// Renderable is anything that can produce an SVG fragment.
+// instance.Instance, draw shapes, text elements — all implement this.
+// Widgets are just one kind of Renderable.
+type Renderable interface {
+	Render() (string, error)
+}
+
 // Document is the SVG canvas.
-// It holds all widget instances and composes them into a final SVG on export.
+// It composes Renderables — shapes, text, gradients, widget instances —
+// into a single exported SVG file.
 type Document struct {
 	Width      int
 	Height     int
 	Background string // optional hex fill, e.g. "#0f0f1a". Empty = transparent.
 
-	instances []instance.Instance
-	defs      []string // raw <defs> fragments (shared gradients, filters, etc.)
+	renderables []Renderable
+	defs        []string // shared <defs> fragments (gradients, filters, etc.)
 }
 
 // NewDocument creates a blank canvas with the given pixel dimensions.
@@ -34,19 +40,25 @@ func (d *Document) WithBackground(color string) *Document {
 	return d
 }
 
-// Add places a widget instance onto the canvas.
-// Instances are rendered in the order they are added (painter's algorithm).
-func (d *Document) Add(inst instance.Instance) {
-	d.instances = append(d.instances, inst)
+// Add places any Renderable onto the canvas.
+// Renderables are drawn in the order they are added (painter's algorithm).
+//
+// Accepted types:
+//   - instance.Instance       — a widget SVG placed with transforms
+//   - draw.Circle, draw.Rect  — native shapes
+//   - draw.Text               — styled text
+//   - Any type with Render() (string, error)
+func (d *Document) Add(r Renderable) {
+	d.renderables = append(d.renderables, r)
 }
 
 // AddDef injects a raw SVG <defs> fragment shared across the whole document.
-// Useful for gradients or filters referenced by multiple widgets.
+// Use this for gradients or filters referenced by multiple elements.
 func (d *Document) AddDef(def string) {
 	d.defs = append(d.defs, def)
 }
 
-// Render composes all instances and returns the complete SVG string.
+// Render composes all renderables and returns the complete SVG string.
 func (d *Document) Render() (string, error) {
 	var sb strings.Builder
 
@@ -57,7 +69,7 @@ func (d *Document) Render() (string, error) {
 	))
 	sb.WriteByte('\n')
 
-	// Shared defs block
+	// Shared defs block (document-level)
 	if len(d.defs) > 0 {
 		sb.WriteString("<defs>\n")
 		for _, def := range d.defs {
@@ -76,13 +88,13 @@ func (d *Document) Render() (string, error) {
 		sb.WriteByte('\n')
 	}
 
-	// Render instances in painter's order
-	for idx, inst := range d.instances {
-		rendered, err := inst.Render()
+	// Render all elements in painter's order
+	for idx, r := range d.renderables {
+		svg, err := r.Render()
 		if err != nil {
-			return "", fmt.Errorf("doc.Render: instance[%d] (%s): %w", idx, inst.Widget.Name, err)
+			return "", fmt.Errorf("doc.Render: element[%d]: %w", idx, err)
 		}
-		sb.WriteString(rendered)
+		sb.WriteString(svg)
 		sb.WriteByte('\n')
 	}
 
