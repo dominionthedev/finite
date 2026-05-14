@@ -1,3 +1,5 @@
+// Package doc provides the core SVG document model and rendering engine for Finite.
+// It defines the Document canvas and the Renderable interface for composable elements.
 package doc
 
 import (
@@ -6,26 +8,25 @@ import (
 	"strings"
 )
 
-// Renderable is anything that can produce an SVG fragment.
-// instance.Instance, draw shapes, text elements — all implement this.
-// Widgets are just one kind of Renderable.
+// Renderable is the core interface for anything that can be drawn onto a Finite document.
+// Standard shapes, text, widget instances, and groups all implement this interface.
 type Renderable interface {
+	// Render returns a string containing a valid SVG fragment.
 	Render() (string, error)
 }
 
-// Document is the SVG canvas.
-// It composes Renderables — shapes, text, gradients, widget instances —
-// into a single exported SVG file.
+// Document represents an SVG canvas. It acts as a container for Renderable elements
+// and manages document-wide properties like dimensions, background, and shared definitions.
 type Document struct {
-	Width      int
-	Height     int
-	Background string // optional hex fill, e.g. "#0f0f1a". Empty = transparent.
+	Width      int    // Width of the SVG in pixels
+	Height     int    // Height of the SVG in pixels
+	Background string // Optional background color (hex code, e.g., "#ffffff")
 
 	renderables []Renderable
-	defs        []string // shared <defs> fragments (gradients, filters, etc.)
+	defs        []string
 }
 
-// NewDocument creates a blank canvas with the given pixel dimensions.
+// NewDocument initializes a new SVG canvas with the specified width and height.
 func NewDocument(width, height int) *Document {
 	return &Document{
 		Width:  width,
@@ -33,32 +34,26 @@ func NewDocument(width, height int) *Document {
 	}
 }
 
-// WithBackground sets a solid background color for the canvas.
-// Returns the Document so calls can be chained.
+// WithBackground sets a solid background color for the entire document.
+// It returns the Document pointer to enable fluent chaining.
 func (d *Document) WithBackground(color string) *Document {
 	d.Background = color
 	return d
 }
 
-// Add places any Renderable onto the canvas.
-// Renderables are drawn in the order they are added (painter's algorithm).
-//
-// Accepted types:
-//   - instance.Instance       — a widget SVG placed with transforms
-//   - draw.Circle, draw.Rect  — native shapes
-//   - draw.Text               — styled text
-//   - Any type with Render() (string, error)
+// Add appends a Renderable element to the document's drawing list.
+// Elements are rendered in the order they are added (Painter's Algorithm).
 func (d *Document) Add(r Renderable) {
 	d.renderables = append(d.renderables, r)
 }
 
-// AddDef injects a raw SVG <defs> fragment shared across the whole document.
-// Use this for gradients or filters referenced by multiple elements.
+// AddDef registers a raw SVG <defs> fragment to be included in the document's header.
+// This is typically used for shared gradients, filters, or clip paths.
 func (d *Document) AddDef(def string) {
 	d.defs = append(d.defs, def)
 }
 
-// Render composes all renderables and returns the complete SVG string.
+// Render generates the complete SVG XML string for the entire document.
 func (d *Document) Render() (string, error) {
 	var sb strings.Builder
 
