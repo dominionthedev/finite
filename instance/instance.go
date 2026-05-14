@@ -1,8 +1,4 @@
-// Package instance places any Widget onto a document canvas with
-// optional transforms — translate, scale, rotation.
-//
-// The same widget can be placed multiple times at different positions,
-// scales, and orientations. Each placement is an independent Instance.
+// Package instance provides tools to place Widgets on a document canvas with geometric transforms.
 package instance
 
 import (
@@ -12,21 +8,18 @@ import (
 	"github.com/dominionthedev/finite/widget"
 )
 
-// Instance is a widget placed on the document canvas with a position
-// and optional transform.
+// Instance represents a widget placed at a specific location with optional scaling and rotation.
 type Instance struct {
 	w        widget.Widget
 	x, y     float64
 	scale    float64
-	rotation float64 // degrees
+	rotation float64 // rotation in degrees
 }
 
-// Option configures an Instance.
+// Option defines a functional option for configuring a widget Instance.
 type Option func(*Instance)
 
-// At creates an Instance placing w at (x, y).
-//
-//	instance.At(ring, 300, 300, instance.WithScale(1.5), instance.WithRotation(30))
+// At creates a new Instance of the specified widget at the coordinates (x, y).
 func At(w widget.Widget, x, y float64, opts ...Option) *Instance {
 	inst := &Instance{w: w, x: x, y: y, scale: 1.0}
 	for _, opt := range opts {
@@ -35,13 +28,13 @@ func At(w widget.Widget, x, y float64, opts ...Option) *Instance {
 	return inst
 }
 
-// WithScale sets a uniform scale multiplier.
+// WithScale returns an Option that sets the uniform scale for the instance.
 func WithScale(s float64) Option { return func(i *Instance) { i.scale = s } }
 
-// WithRotation sets rotation in degrees.
+// WithRotation returns an Option that sets the rotation (in degrees) for the instance.
 func WithRotation(deg float64) Option { return func(i *Instance) { i.rotation = deg } }
 
-// Render implements doc.Renderable.
+// Render generates the SVG XML for the instance, applying the necessary transforms.
 func (inst *Instance) Render() (string, error) {
 	svg, err := inst.w.Render()
 	if err != nil {

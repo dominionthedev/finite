@@ -1,11 +1,5 @@
-// Package validate checks a Finite document or raw SVG string for
-// structural problems before export.
-//
-//	report, err := validate.Document(canvas)
-//	if !report.Valid() {
-//	    fmt.Println(report)
-//	    os.Exit(1)
-//	}
+// Package validate provides tools to audit SVG documents for structural issues,
+// duplicate IDs, and unresolved references.
 package validate
 
 import (
@@ -16,13 +10,13 @@ import (
 	"github.com/dominionthedev/finite/doc"
 )
 
-// Severity classifies how serious an issue is.
+// Severity indicates the importance of a validation issue.
 type Severity int
 
 const (
-	SeverityError   Severity = iota // blocks export
-	SeverityWarning                 // worth knowing, won't block
-	SeverityInfo                    // informational
+	SeverityError   Severity = iota // Error: Prevents successful rendering or violates SVG standards.
+	SeverityWarning                 // Warning: Potential issue that may affect visibility or behavior.
+	SeverityInfo                    // Info: General observation about the document.
 )
 
 func (s Severity) String() string {
@@ -36,7 +30,7 @@ func (s Severity) String() string {
 	}
 }
 
-// Issue is a single finding from the validator.
+// Issue represents a single finding from the validation process.
 type Issue struct {
 	Severity Severity
 	Message  string
@@ -46,12 +40,12 @@ func (i Issue) String() string {
 	return fmt.Sprintf("[%s] %s", i.Severity, i.Message)
 }
 
-// Report holds all issues found during validation.
+// Report collects all issues found during a validation run.
 type Report struct {
 	issues []Issue
 }
 
-// Valid returns true if there are no error-severity issues.
+// Valid returns true if the report contains no errors.
 func (r *Report) Valid() bool {
 	for _, i := range r.issues {
 		if i.Severity == SeverityError {
@@ -61,7 +55,7 @@ func (r *Report) Valid() bool {
 	return true
 }
 
-// Errors returns only error-severity issues.
+// Errors returns a slice of all error-severity issues.
 func (r *Report) Errors() []Issue {
 	var out []Issue
 	for _, i := range r.issues {
@@ -72,7 +66,7 @@ func (r *Report) Errors() []Issue {
 	return out
 }
 
-// Warnings returns only warning-severity issues.
+// Warnings returns a slice of all warning-severity issues.
 func (r *Report) Warnings() []Issue {
 	var out []Issue
 	for _, i := range r.issues {
@@ -83,7 +77,7 @@ func (r *Report) Warnings() []Issue {
 	return out
 }
 
-// String returns a human-readable summary of all issues.
+// String returns a multi-line string summary of all issues in the report.
 func (r *Report) String() string {
 	if len(r.issues) == 0 {
 		return "validate: no issues found"
@@ -103,7 +97,7 @@ func (r *Report) add(sev Severity, format string, args ...any) {
 	})
 }
 
-// Document renders a doc.Document and validates the resulting SVG.
+// Document validates a Finite document by rendering it and auditing the resulting SVG XML.
 func Document(d *doc.Document) (*Report, error) {
 	svg, err := d.Render()
 	if err != nil {
@@ -112,7 +106,7 @@ func Document(d *doc.Document) (*Report, error) {
 	return SVG(svg)
 }
 
-// SVG validates a raw SVG string.
+// SVG validates a raw SVG XML string.
 func SVG(svg string) (*Report, error) {
 	r := &Report{}
 

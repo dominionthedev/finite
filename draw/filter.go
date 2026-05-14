@@ -1,27 +1,26 @@
+// Package draw provides SVG primitive shapes, text elements, and styling options.
 package draw
 
 import "fmt"
 
-// Filter represents an SVG filter with a unique ID.
-// It produces a <filter> def and a url(#id) reference.
+// Filter represents an SVG filter with a unique ID and one or more filter primitives.
+// It produces a <filter> element within a <defs> block and can be referenced by other elements.
 type Filter struct {
 	id      string
 	content string // inner filter primitives
 }
 
-// Def returns the complete <filter> element for a <defs> block.
+// Def returns the complete <filter> XML element for use in a <defs> block.
 func (f *Filter) Def() string {
 	return fmt.Sprintf(`<filter id="%s">%s</filter>`, f.id, f.content)
 }
 
-// Ref returns the filter attribute value: "url(#id)".
+// Ref returns the SVG filter attribute value, e.g., "url(#my-filter)".
 func (f *Filter) Ref() string {
 	return fmt.Sprintf("url(#%s)", f.id)
 }
 
-// Blur creates a Gaussian blur filter.
-//
-//	draw.Blur("my-blur", 12)
+// Blur creates a Gaussian blur filter with the specified standard deviation.
 func Blur(id string, stdDev float64) *Filter {
 	return &Filter{
 		id:      id,
@@ -29,9 +28,7 @@ func Blur(id string, stdDev float64) *Filter {
 	}
 }
 
-// Glow creates a soft glow filter by layering a blurred copy beneath the source.
-//
-//	draw.Glow("my-glow", 8)
+// Glow creates a soft outer glow filter by layering multiple blurred copies of the source graphic.
 func Glow(id string, radius float64) *Filter {
 	return &Filter{
 		id: id,
@@ -45,10 +42,8 @@ func Glow(id string, radius float64) *Filter {
 	}
 }
 
-// Noise creates an feTurbulence grain/texture overlay filter.
-// blendMode controls how the noise blends: "overlay", "multiply", "screen", etc.
-//
-//	draw.Noise("my-noise", 0.65, 3, "overlay")
+// Noise creates a fractal noise texture using feTurbulence.
+// blendMode controls how the noise is composited with the source graphic (e.g., "overlay", "multiply").
 func Noise(id string, frequency float64, octaves int, blendMode string) *Filter {
 	if blendMode == "" {
 		blendMode = "overlay"
@@ -62,9 +57,7 @@ func Noise(id string, frequency float64, octaves int, blendMode string) *Filter 
 	}
 }
 
-// Shadow creates a drop shadow filter.
-//
-//	draw.Shadow("my-shadow", 4, 4, 6, "#000000", 0.5)
+// Shadow creates a simple drop shadow filter with the specified offset, blur, and color.
 func Shadow(id string, dx, dy, blur float64, color string, opacity float64) *Filter {
 	return &Filter{
 		id: id,

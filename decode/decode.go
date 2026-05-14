@@ -1,19 +1,10 @@
-// Package decode reads standard SVG files and converts them into
-// Finite's native types — shapes, text, groups, gradients.
-//
-// This is Finite's import layer. Any existing SVG can be loaded,
-// decoded into composable elements, and then extended or re-exported
-// through the rest of the Finite pipeline.
-//
-//	canvas, err := decode.File("my-logo.svg")
-//	canvas.Add(draw.NewText("v2", 400, 50, draw.TextFill("#fff"), draw.Centered()))
-//	canvas.Export("output.svg")
+// Package decode provides functionality to parse existing SVG files and bytes into
+// Finite's native document model. It supports common SVG elements and transforms.
 package decode
 
 import (
 	"encoding/xml"
 	"fmt"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -22,7 +13,7 @@ import (
 	"github.com/dominionthedev/finite/draw"
 )
 
-// File reads an SVG file from disk and returns a populated doc.Document.
+// File reads an SVG file from the specified path and decodes it into a doc.Document.
 func File(path string) (*doc.Document, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -31,7 +22,7 @@ func File(path string) (*doc.Document, error) {
 	return Bytes(data)
 }
 
-// Bytes parses raw SVG bytes into a doc.Document.
+// Bytes parses raw SVG XML data and returns a populated doc.Document.
 func Bytes(data []byte) (*doc.Document, error) {
 	root, err := parseXML(data)
 	if err != nil {
@@ -42,8 +33,12 @@ func Bytes(data []byte) (*doc.Document, error) {
 	h := attrFloat(root.Attrs, "height", 0)
 	if vb, ok := root.Attrs["viewBox"]; ok {
 		parts := parseViewBox(vb)
-		if w == 0 { w = parts[2] }
-		if h == 0 { h = parts[3] }
+		if w == 0 {
+			w = parts[2]
+		}
+		if h == 0 {
+			h = parts[3]
+		}
 	}
 
 	d := doc.NewDocument(int(w), int(h))
@@ -66,8 +61,7 @@ func Bytes(data []byte) (*doc.Document, error) {
 	return d, nil
 }
 
-// ── XML node ─────────────────────────────────────────────────────────────────
-
+// xmlNode is an internal representation of an XML element for easier processing.
 type xmlNode struct {
 	Tag      string
 	Attrs    map[string]string
@@ -129,15 +123,14 @@ func parseXML(data []byte) (*xmlNode, error) {
 	return root, nil
 }
 
-// ── SVG element → draw.Renderable ────────────────────────────────────────────
-
+// toRenderable converts an internal xmlNode into a Finite doc.Renderable.
 func toRenderable(n *xmlNode) doc.Renderable {
 	opts := shapeOpts(n)
 	switch n.Tag {
 	case "circle":
 		cx := attrFloat(n.Attrs, "cx", 0)
 		cy := attrFloat(n.Attrs, "cy", 0)
-		r  := attrFloat(n.Attrs, "r", 0)
+		r := attrFloat(n.Attrs, "r", 0)
 		return draw.NewCircle(cx, cy, r, opts...)
 
 	case "ellipse":
@@ -198,8 +191,6 @@ func toRenderable(n *xmlNode) doc.Renderable {
 	}
 }
 
-// ── Option builders ───────────────────────────────────────────────────────────
-
 func shapeOpts(n *xmlNode) []draw.ShapeOption {
 	var opts []draw.ShapeOption
 
@@ -227,18 +218,15 @@ func textOpts(n *xmlNode) []draw.TextOption {
 		opts = append(opts, draw.TextFill(fill))
 	}
 	if fs, ok := n.Attrs["font-size"]; ok {
-		if v := parseFloat(fs); v > 0 {
+		if v, err := strconv.ParseFloat(strings.TrimSuffix(fs, "px"), 64); err == nil {
 			opts = append(opts, draw.FontSize(v))
 		}
 	}
 	if fw, ok := n.Attrs["font-weight"]; ok {
 		opts = append(opts, draw.FontWeight(fw))
 	}
-	if ff, ok := n.Attrs["font-family"]; ok {
-		opts = append(opts, draw.FontFamily(ff))
-	}
-	if ta, ok := n.Attrs["text-anchor"]; ok && ta == "middle" {
-		opts = append(opts, draw.Centered())
+	if ta, ok := n.Attrs["text-anchor"]; ok {
+		opts = append(opts, draw.Anchor(draw.TextAnchor(ta)))
 	}
 	return opts
 }
@@ -248,176 +236,109 @@ func groupOpts(n *xmlNode) []draw.GroupOption {
 	if id, ok := n.Attrs["id"]; ok {
 		opts = append(opts, draw.GroupID(id))
 	}
-	if tfm, ok := n.Attrs["transform"]; ok {
-		opts = append(opts, draw.GroupTransform(tfm))
-	}
 	if op, ok := n.Attrs["opacity"]; ok {
 		if v, err := strconv.ParseFloat(op, 64); err == nil {
 			opts = append(opts, draw.GroupOpacity(v))
 		}
 	}
+	if tfm, ok := n.Attrs["transform"]; ok {
+		opts = append(opts, draw.GroupTransform(tfm))
+	}
 	return opts
 }
 
-// ── Transform math ────────────────────────────────────────────────────────────
-
-// Transform holds a decomposed SVG transform.
-type Transform struct {
-	TranslateX, TranslateY float64
-	ScaleX, ScaleY         float64
-	RotateDeg              float64
-}
-
-// ParseTransform parses an SVG transform attribute string.
-// Handles translate(), scale(), rotate(), and matrix().
-func ParseTransform(s string) Transform {
-	t := Transform{ScaleX: 1, ScaleY: 1}
-	for _, part := range splitFunctions(s) {
-		name, args := parseFn(part)
-		switch name {
-		case "translate":
-			if len(args) >= 1 { t.TranslateX = args[0] }
-			if len(args) >= 2 { t.TranslateY = args[1] }
-		case "scale":
-			if len(args) >= 1 { t.ScaleX = args[0]; t.ScaleY = args[0] }
-			if len(args) >= 2 { t.ScaleY = args[1] }
-		case "rotate":
-			if len(args) >= 1 { t.RotateDeg = args[0] }
-		case "matrix":
-			if len(args) == 6 {
-				a, b, c, d, e, f := args[0], args[1], args[2], args[3], args[4], args[5]
-				t.TranslateX = e
-				t.TranslateY = f
-				t.ScaleX = math.Sqrt(a*a + b*b)
-				t.ScaleY = math.Sqrt(c*c + d*d)
-				t.RotateDeg = math.Atan2(b, a) * (180 / math.Pi)
-			}
-		}
-	}
-	return t
-}
-
 func splitFunctions(s string) []string {
-	var parts []string
-	depth, start := 0, 0
-	for i, ch := range s {
-		switch ch {
-		case '(':
+	var fns []string
+	var current strings.Builder
+	depth := 0
+	for _, r := range s {
+		if r == '(' {
 			depth++
-		case ')':
+		}
+		if r == ')' {
 			depth--
-			if depth == 0 {
-				parts = append(parts, s[start:i+1])
-				start = i + 1
+		}
+		current.WriteRune(r)
+		if depth == 0 && r == ' ' {
+			if current.Len() > 0 {
+				fns = append(fns, strings.TrimSpace(current.String()))
+				current.Reset()
 			}
 		}
 	}
-	return parts
+	if current.Len() > 0 {
+		fns = append(fns, strings.TrimSpace(current.String()))
+	}
+	return fns
 }
 
 func parseFn(s string) (string, []float64) {
-	lp := strings.Index(s, "(")
-	rp := strings.LastIndex(s, ")")
-	if lp == -1 || rp == -1 {
+	open := strings.Index(s, "(")
+	close := strings.Index(s, ")")
+	if open == -1 || close == -1 {
 		return "", nil
 	}
-	name := strings.TrimSpace(s[:lp])
-	var args []float64
-	for _, tok := range strings.FieldsFunc(s[lp+1:rp], func(r rune) bool {
-		return r == ',' || r == ' ' || r == '\t'
-	}) {
-		if v, err := strconv.ParseFloat(tok, 64); err == nil {
-			args = append(args, v)
-		}
+	name := strings.TrimSpace(s[:open])
+	argsStr := s[open+1 : close]
+	argsStr = strings.ReplaceAll(argsStr, ",", " ")
+	parts := strings.Fields(argsStr)
+	args := make([]float64, len(parts))
+	for i, p := range parts {
+		args[i] = parseFloat(p)
 	}
 	return name, args
 }
 
-// ── Colour extraction ─────────────────────────────────────────────────────────
-
-// ExtractColors walks a decoded document and returns every unique
-// hex color found in fill, stroke, and stop-color attributes.
-func ExtractColors(d *doc.Document) []string {
-	// We re-render and scan the SVG string for hex colors.
-	svg, err := d.Render()
-	if err != nil {
-		return nil
-	}
-	seen := map[string]bool{}
-	var colors []string
-	i := 0
-	for i < len(svg) {
-		if svg[i] == '#' && i+7 <= len(svg) {
-			candidate := svg[i : i+7]
-			valid := true
-			for _, ch := range candidate[1:] {
-				if !((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
-					valid = false
-					break
-				}
-			}
-			if valid && !seen[candidate] {
-				seen[candidate] = true
-				colors = append(colors, candidate)
-			}
-		}
-		i++
-	}
-	return colors
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 func renderRaw(n *xmlNode) string {
-	var b strings.Builder
-	b.WriteString("<")
-	b.WriteString(n.Tag)
+	var sb strings.Builder
+	sb.WriteString("<" + n.Tag)
 	for k, v := range n.Attrs {
-		b.WriteString(fmt.Sprintf(` %s="%s"`, k, v))
+		sb.WriteString(fmt.Sprintf(` %s="%s"`, k, v))
 	}
 	if len(n.Children) == 0 && n.Text == "" {
-		b.WriteString("/>")
-		return b.String()
+		sb.WriteString("/>")
+	} else {
+		sb.WriteString(">")
+		sb.WriteString(n.Text)
+		for _, child := range n.Children {
+			sb.WriteString(renderRaw(child))
+		}
+		sb.WriteString("</" + n.Tag + ">")
 	}
-	b.WriteString(">")
-	b.WriteString(n.Text)
-	for _, child := range n.Children {
-		b.WriteString(renderRaw(child))
-	}
-	b.WriteString(fmt.Sprintf("</%s>", n.Tag))
-	return b.String()
+	return sb.String()
 }
 
 func parseViewBox(s string) [4]float64 {
-	var out [4]float64
 	parts := strings.Fields(strings.ReplaceAll(s, ",", " "))
-	for i, p := range parts {
-		if i >= 4 { break }
-		out[i], _ = strconv.ParseFloat(p, 64)
+	var res [4]float64
+	for i := 0; i < 4 && i < len(parts); i++ {
+		res[i] = parseFloat(parts[i])
 	}
-	return out
+	return res
 }
 
 func attrFloat(attrs map[string]string, key string, def float64) float64 {
-	v, ok := attrs[key]
-	if !ok { return def }
-	return parseFloat(v)
+	if v, ok := attrs[key]; ok {
+		return parseFloat(v)
+	}
+	return def
 }
 
 func parseFloat(s string) float64 {
-	s = strings.TrimRight(strings.TrimSpace(s), "pxtemr%")
-	v, err := strconv.ParseFloat(s, 64)
-	if err != nil { return 0 }
-	return v
+	s = strings.TrimSuffix(s, "px")
+	s = strings.TrimSuffix(s, "pt")
+	f, _ := strconv.ParseFloat(s, 64)
+	return f
 }
 
 func parseStyle(s string) map[string]string {
-	m := make(map[string]string)
-	for _, decl := range strings.Split(s, ";") {
-		parts := strings.SplitN(strings.TrimSpace(decl), ":", 2)
-		if len(parts) == 2 {
-			m[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	res := make(map[string]string)
+	parts := strings.Split(s, ";")
+	for _, p := range parts {
+		kv := strings.Split(p, ":")
+		if len(kv) == 2 {
+			res[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
 		}
 	}
-	return m
+	return res
 }

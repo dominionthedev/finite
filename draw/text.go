@@ -1,3 +1,4 @@
+// Package draw provides SVG primitive shapes, text elements, and styling options.
 package draw
 
 import (
@@ -5,7 +6,7 @@ import (
 	"strings"
 )
 
-// TextAnchor controls horizontal text alignment.
+// TextAnchor defines the horizontal alignment of text.
 type TextAnchor string
 
 const (
@@ -14,8 +15,8 @@ const (
 	AnchorEnd    TextAnchor = "end"
 )
 
-// Text is a styled SVG <text> element.
-// Supports solid fills, gradient fills, and glow filters.
+// Text represents a styled SVG <text> element. It supports custom fonts, sizes,
+// weights, alignment, and letter spacing.
 type Text struct {
 	content     string
 	x, y        float64
@@ -27,17 +28,10 @@ type Text struct {
 	style       shapeStyle
 }
 
-// TextOption configures a Text element.
+// TextOption defines a functional option for configuring a Text element.
 type TextOption func(*Text)
 
-// NewText creates a text element at (x, y).
-//
-//	draw.NewText("Finite", 400, 300,
-//	    draw.FontSize(64),
-//	    draw.FontWeight("700"),
-//	    draw.TextFill("#ffffff"),
-//	    draw.Centered(),
-//	)
+// NewText creates a new text element at the specified (x, y) coordinates.
 func NewText(content string, x, y float64, opts ...TextOption) *Text {
 	t := &Text{
 		content:    content,
@@ -55,22 +49,22 @@ func NewText(content string, x, y float64, opts ...TextOption) *Text {
 	return t
 }
 
-// FontSize sets the font size in pixels.
+// FontSize sets the text size in pixels.
 func FontSize(size float64) TextOption {
 	return func(t *Text) { t.fontSize = size }
 }
 
-// FontWeight sets the font weight ("400", "700", "900", etc.)
+// FontWeight sets the font weight (e.g., "400", "700", "bold").
 func FontWeight(w string) TextOption {
 	return func(t *Text) { t.fontWeight = w }
 }
 
-// FontFamily sets the font-family string.
+// FontFamily sets the CSS font family string for the text.
 func FontFamily(f string) TextOption {
 	return func(t *Text) { t.fontFamily = f }
 }
 
-// LetterSpacing sets the letter-spacing in pixels.
+// LetterSpacing sets the spacing between characters in pixels.
 func LetterSpacing(s float64) TextOption {
 	return func(t *Text) { t.letterSpace = s }
 }
@@ -91,27 +85,27 @@ func TextFillGradient(g fillProvider) TextOption {
 	}
 }
 
-// TextFilter attaches a filter (e.g. Glow) to the text element.
+// TextFilter attaches an SVG filter (e.g., Glow, Shadow) to the text.
 func TextFilter(f *Filter) TextOption {
 	return func(t *Text) { t.style.filter = f }
 }
 
-// Centered sets text-anchor and dominant-baseline to center the text at (x, y).
+// Centered is a shorthand to center text both horizontally and vertically (using dominant-baseline).
 func Centered() TextOption {
 	return func(t *Text) { t.anchor = AnchorMiddle }
 }
 
-// Anchor sets the text-anchor alignment.
+// Anchor sets the horizontal alignment of the text.
 func Anchor(a TextAnchor) TextOption {
 	return func(t *Text) { t.anchor = a }
 }
 
-// TextOpacity sets the text opacity.
+// TextOpacity sets the overall opacity (0.0 to 1.0) of the text element.
 func TextOpacity(v float64) TextOption {
 	return func(t *Text) { t.style.opacity = v }
 }
 
-// Render implements doc.Renderable.
+// Render generates the SVG XML for the text element.
 func (t *Text) Render() (string, error) {
 	var attrs strings.Builder
 

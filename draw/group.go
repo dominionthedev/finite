@@ -1,3 +1,4 @@
+// Package draw provides SVG primitive shapes, text elements, and styling options.
 package draw
 
 import (
@@ -5,37 +6,34 @@ import (
 	"strings"
 )
 
-// ── Group ─────────────────────────────────────────────────────────────────────
-
-// Group is a collection of Renderables wrapped in an SVG <g> element.
-// Use it to apply a shared transform or opacity to multiple elements,
-// or to logically organise layers.
+// Group represents an SVG <g> element. It is used to group multiple Renderables
+// and apply shared transformations, IDs, or opacity to the entire group.
 type Group struct {
-	id         string
-	transform  string
-	opacity    float64
-	children   []interface{ Render() (string, error) }
+	id        string
+	transform string
+	opacity   float64
+	children  []interface{ Render() (string, error) }
 }
 
-// GroupOption configures a Group.
+// GroupOption defines a functional option for configuring a Group.
 type GroupOption func(*Group)
 
-// GroupID sets the SVG id attribute on the <g> element.
+// GroupID sets the SVG ID for the group element.
 func GroupID(id string) GroupOption {
 	return func(g *Group) { g.id = id }
 }
 
-// GroupTransform sets the transform attribute on the <g> element.
+// GroupTransform sets the SVG transform attribute for the group.
 func GroupTransform(t string) GroupOption {
 	return func(g *Group) { g.transform = t }
 }
 
-// GroupOpacity sets the opacity attribute on the <g> element.
+// GroupOpacity sets the overall opacity (0.0 to 1.0) for the group.
 func GroupOpacity(o float64) GroupOption {
 	return func(g *Group) { g.opacity = o }
 }
 
-// NewGroup creates a new empty Group.
+// NewGroup initializes a new empty Group.
 func NewGroup(opts ...GroupOption) *Group {
 	g := &Group{opacity: 1.0}
 	for _, opt := range opts {
@@ -44,12 +42,12 @@ func NewGroup(opts ...GroupOption) *Group {
 	return g
 }
 
-// Add appends a Renderable to the group.
+// Add appends a Renderable element to the group.
 func (g *Group) Add(r interface{ Render() (string, error) }) {
 	g.children = append(g.children, r)
 }
 
-// Render implements doc.Renderable.
+// Render generates the SVG XML for the group and all its children.
 func (g *Group) Render() (string, error) {
 	var sb strings.Builder
 
@@ -77,20 +75,13 @@ func (g *Group) Render() (string, error) {
 	return sb.String(), nil
 }
 
-// ── RawElement ────────────────────────────────────────────────────────────────
-
-// RawElement is an escape hatch that passes an SVG string through
-// directly without any transformation or validation.
-//
-// Use it for:
-//   - SVG fragments produced by the decode package
-//   - Externally generated SVG you want to composite
-//   - Manually written SVG for edge cases the draw API doesn't cover
+// RawElement allows embedding raw SVG strings directly into a document.
+// This is useful for importing legacy SVG fragments or manual optimizations.
 type RawElement struct {
-	Content string
+	Content string // Raw SVG XML content
 }
 
-// Render implements doc.Renderable. Returns Content as-is.
+// Render returns the raw content string as-is.
 func (r *RawElement) Render() (string, error) {
 	return r.Content, nil
 }
