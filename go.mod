@@ -1,3 +1,3 @@
-module github.com/leraniode/alolyte
+module github.com/dominionthedev/finite
 
 go 1.22
