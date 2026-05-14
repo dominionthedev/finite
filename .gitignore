@@ -23,3 +23,9 @@ output.svg
 *.swp
 *.swo
 .DS_Store
+
+# assets
+COMMIT.md
+*.zip
+alolyte-*.zip
+alolyte-*/
