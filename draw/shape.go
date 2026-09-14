@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"sync/atomic"
+
+	"github.com/dominionthedev/finite/geom"
 )
 
 // shapeCounter generates unique IDs for inline defs (filters, gradients).
@@ -116,8 +118,15 @@ func WithFilter(f *Filter) ShapeOption {
 	return func(s *shapeStyle) { s.filter = f }
 }
 
-// Transform applies a raw SVG transform string to the shape.
-func Transform(t string) ShapeOption {
+// Transform applies a geom.Matrix transform to the shape.
+// For convenience, a raw SVG transform string is still accepted via TransformString.
+func Transform(m geom.Matrix) ShapeOption {
+	return func(s *shapeStyle) { s.transform = m.String() }
+}
+
+// TransformString applies a raw SVG transform string to the shape.
+// Prefer Transform(geom.Matrix) for type-safe composition.
+func TransformString(t string) ShapeOption {
 	return func(s *shapeStyle) { s.transform = t }
 }
 

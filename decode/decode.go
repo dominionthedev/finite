@@ -207,7 +207,7 @@ func shapeOpts(n *xmlNode) []draw.ShapeOption {
 		}
 	}
 	if tfm, ok := n.Attrs["transform"]; ok {
-		opts = append(opts, draw.Transform(tfm))
+		opts = append(opts, draw.TransformString(tfm))
 	}
 	return opts
 }
@@ -242,7 +242,7 @@ func groupOpts(n *xmlNode) []draw.GroupOption {
 		}
 	}
 	if tfm, ok := n.Attrs["transform"]; ok {
-		opts = append(opts, draw.GroupTransform(tfm))
+		opts = append(opts, draw.GroupTransformString(tfm))
 	}
 	return opts
 }
