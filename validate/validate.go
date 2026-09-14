@@ -112,8 +112,8 @@ func SVG(svg string) (*Report, error) {
 
 	// ── 1. Well-formed XML ────────────────────────────────────────────────
 	dec := xml.NewDecoder(strings.NewReader(svg))
-	ids := map[string]int{}        // id → count
-	urlRefs := []string{}          // url(#...) references found
+	ids := map[string]int{}         // id → count
+	urlRefs := []string{}           // url(#...) references found
 	definedIDs := map[string]bool{} // all defined ids
 
 	for {

@@ -25,8 +25,8 @@ type fillProvider interface {
 }
 
 type shapeStyle struct {
-	fill        string   // hex color or url(#id)
-	fillDef     string   // optional gradient/filter def to inline
+	fill        string // hex color or url(#id)
+	fillDef     string // optional gradient/filter def to inline
 	stroke      string
 	strokeWidth float64
 	opacity     float64
