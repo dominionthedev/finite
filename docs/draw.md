@@ -22,7 +22,7 @@ Finite uses a functional options pattern for styling:
 - `Stroke(color string, width float64)`
 - `Opacity(v float64)`
 - `WithFilter(f *Filter)`
-- `Transform(t string)`
+- `Transform(m geom.Matrix)` / `TransformString(t string)`
 
 ## Gradients
 
@@ -35,3 +35,21 @@ Finite uses a functional options pattern for styling:
 - `Glow(id string, radius float64)`
 - `Noise(id string, frequency float64, octaves int, blendMode string)`
 - `Shadow(id string, dx, dy, blur float64, color string, opacity float64)`
+
+
+## Groups
+
+`Group` is the primary composition primitive inside a document or layer.
+
+```go
+g := draw.NewGroup(draw.GroupID("cluster"), draw.GroupOpacity(0.9))
+g.Translate(100, 80).Rotate(15)
+g.Add(
+    draw.NewCircle(0, 0, 20, draw.Fill("#a78bfa")),
+    draw.NewCircle(30, 0, 12, draw.Fill("#c4b5fd")),
+)
+canvas.Add(g)
+```
+
+Options: `GroupID`, `GroupTransform`, `GroupTransformString`, `GroupOpacity`, `GroupFilter`.
+Chainable methods: `Add`, `Translate`, `Rotate`, `RotateAround`, `Scale`, `ScaleUniform`, `SetTransform`.

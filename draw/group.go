@@ -8,49 +8,56 @@ import (
 	"github.com/dominionthedev/finite/geom"
 )
 
-// Group represents an SVG <g> element. It is used to group multiple Renderables
-// and apply shared transformations, IDs, or opacity to the entire group.
+// Group represents an SVG <g> element. It is the primary composition primitive
+// in Finite: a named, transformable container for other Renderables.
+//
+// Groups nest cleanly. Transforms, opacity, and filters applied to a group
+// affect the entire subtree.
 type Group struct {
 	id           string
 	transform    geom.Matrix
-	rawTransform string // set when a raw SVG transform string is provided
+	rawTransform string // used when a raw SVG transform string is provided (e.g. from decode)
 	opacity      float64
+	filter       *Filter
 	children     []interface{ Render() (string, error) }
 }
 
-// GroupOption defines a functional option for configuring a Group.
+// GroupOption configures a Group.
 type GroupOption func(*Group)
 
-// GroupID sets the SVG ID for the group element.
+// GroupID sets the SVG id attribute.
 func GroupID(id string) GroupOption {
 	return func(g *Group) { g.id = id }
 }
 
-// GroupTransform sets a full transform matrix on the group.
+// GroupTransform sets the group's transform matrix.
 func GroupTransform(m geom.Matrix) GroupOption {
-	return func(g *Group) { g.transform = m }
-}
-
-// GroupTransformString sets a raw SVG transform string on the group.
-// Prefer GroupTransform(geom.Matrix) when constructing transforms in code.
-func GroupTransformString(t string) GroupOption {
 	return func(g *Group) {
-		// Store as a pure translation of the string by using a matrix that
-		// String() cannot simplify; we keep the raw string path via a
-		// side channel by overwriting after matrix assignment.
-		// Simpler approach: parse is not implemented, so we keep the raw
-		// string in a dedicated field path by using TransformString-style.
-		// For now, store identity and rely on a raw override.
-		g.rawTransform = t
+		g.transform = m
+		g.rawTransform = ""
 	}
 }
 
-// GroupOpacity sets the overall opacity (0.0 to 1.0) for the group.
+// GroupTransformString sets a raw SVG transform string.
+// Prefer GroupTransform(geom.Matrix) when building transforms in code.
+func GroupTransformString(t string) GroupOption {
+	return func(g *Group) {
+		g.rawTransform = t
+		g.transform = geom.Identity()
+	}
+}
+
+// GroupOpacity sets the group's opacity (0–1).
 func GroupOpacity(o float64) GroupOption {
 	return func(g *Group) { g.opacity = o }
 }
 
-// NewGroup initializes a new empty Group.
+// GroupFilter attaches an SVG filter to the entire group.
+func GroupFilter(f *Filter) GroupOption {
+	return func(g *Group) { g.filter = f }
+}
+
+// NewGroup creates an empty Group.
 func NewGroup(opts ...GroupOption) *Group {
 	g := &Group{
 		opacity:   1.0,
@@ -62,65 +69,109 @@ func NewGroup(opts ...GroupOption) *Group {
 	return g
 }
 
-// Add appends a Renderable element to the group.
-func (g *Group) Add(r interface{ Render() (string, error) }) *Group {
-	g.children = append(g.children, r)
+// Add appends one or more children and returns the group for chaining.
+func (g *Group) Add(rs ...interface{ Render() (string, error) }) *Group {
+	g.children = append(g.children, rs...)
 	return g
 }
 
-// SetTransform replaces the group's transform.
+// Children returns a copy of the group's child list.
+func (g *Group) Children() []interface{ Render() (string, error) } {
+	out := make([]interface{ Render() (string, error) }, len(g.children))
+	copy(out, g.children)
+	return out
+}
+
+// Len returns the number of direct children.
+func (g *Group) Len() int {
+	return len(g.children)
+}
+
+// ID returns the group's SVG id, if any.
+func (g *Group) ID() string {
+	return g.id
+}
+
+// Transform returns the group's current transform matrix.
+// If a raw transform string was set, this returns Identity; use the rendered
+// attribute for the raw value.
+func (g *Group) Transform() geom.Matrix {
+	return g.transform
+}
+
+// SetTransform replaces the group's transform matrix.
 func (g *Group) SetTransform(m geom.Matrix) *Group {
 	g.transform = m
+	g.rawTransform = ""
 	return g
 }
 
-// Translate applies an additional translation to the group.
+// Translate applies an additional translation.
 func (g *Group) Translate(tx, ty float64) *Group {
 	g.transform = g.transform.Mul(geom.Translate(tx, ty))
+	g.rawTransform = ""
 	return g
 }
 
-// Rotate applies an additional rotation (degrees) around the origin.
+// Rotate applies an additional rotation in degrees around the origin.
 func (g *Group) Rotate(degrees float64) *Group {
 	g.transform = g.transform.Mul(geom.Rotate(degrees))
+	g.rawTransform = ""
 	return g
 }
 
 // RotateAround applies an additional rotation around (cx, cy).
 func (g *Group) RotateAround(degrees, cx, cy float64) *Group {
 	g.transform = g.transform.Mul(geom.RotateAround(degrees, cx, cy))
+	g.rawTransform = ""
 	return g
 }
 
 // Scale applies an additional non-uniform scale.
 func (g *Group) Scale(sx, sy float64) *Group {
 	g.transform = g.transform.Mul(geom.Scale(sx, sy))
+	g.rawTransform = ""
 	return g
 }
 
 // ScaleUniform applies an additional uniform scale.
 func (g *Group) ScaleUniform(s float64) *Group {
 	g.transform = g.transform.Mul(geom.ScaleUniform(s))
+	g.rawTransform = ""
 	return g
 }
 
-// Render generates the SVG XML for the group and all its children.
+// transformAttr returns the transform attribute value to emit, if any.
+func (g *Group) transformAttr() string {
+	if g.rawTransform != "" {
+		return g.rawTransform
+	}
+	return g.transform.String()
+}
+
+// Render generates the SVG for the group and its children.
 func (g *Group) Render() (string, error) {
 	var sb strings.Builder
+
+	// Inline filter def if present
+	if g.filter != nil {
+		sb.WriteString("<defs>")
+		sb.WriteString(g.filter.Def())
+		sb.WriteString("</defs>")
+	}
 
 	sb.WriteString("<g")
 	if g.id != "" {
 		sb.WriteString(fmt.Sprintf(` id="%s"`, g.id))
 	}
-	tf := g.rawTransform
-	if tf == "" {
-		tf = g.transform.String()
-	}
-	if tf != "" {
+	if tf := g.transformAttr(); tf != "" {
 		sb.WriteString(fmt.Sprintf(` transform="%s"`, tf))
 	}
 	if g.opacity != 1.0 && g.opacity > 0 {
 		sb.WriteString(fmt.Sprintf(` opacity="%.4f"`, g.opacity))
+	}
+	if g.filter != nil {
+		sb.WriteString(fmt.Sprintf(` filter="%s"`, g.filter.Ref()))
 	}
 	sb.WriteString(">")
 
@@ -136,13 +187,13 @@ func (g *Group) Render() (string, error) {
 	return sb.String(), nil
 }
 
-// RawElement allows embedding raw SVG strings directly into a document.
-// This is useful for importing legacy SVG fragments or manual optimizations.
+// RawElement embeds a raw SVG fragment. Useful for decode results or
+// hand-tuned markup.
 type RawElement struct {
-	Content string // Raw SVG XML content
+	Content string
 }
 
-// Render returns the raw content string as-is.
+// Render returns the raw content unchanged.
 func (r *RawElement) Render() (string, error) {
 	return r.Content, nil
 }

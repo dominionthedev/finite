@@ -1,33 +1,67 @@
 # Module: doc
 
-The `doc` module provides the primary entry point for Finite. It defines the `Document` struct, which acts as the SVG canvas.
+The `doc` module is the primary entry point for Finite. It defines the `Document`
+canvas, the `Renderable` interface, and a lightweight **layer** system for
+structured composition.
 
-## API Reference
+## Core types
 
-### `type Renderable interface`
-Anything that can produce an SVG fragment.
-- `Render() (string, error)`
+### `Renderable`
 
-### `type Document struct`
-The main SVG canvas that composes `Renderable` elements.
-- `Width int`
-- `Height int`
-- `Background string` (optional hex color)
+Anything that can produce an SVG fragment:
 
-### `func NewDocument(width, height int) *Document`
-Creates a new document with the specified dimensions.
+```go
+type Renderable interface {
+    Render() (string, error)
+}
+```
 
-### `func (d *Document) WithBackground(color string) *Document`
-Sets the background color and returns the document for chaining.
+Shapes, text, groups, layers, and widget instances all implement this.
 
-### `func (d *Document) Add(r Renderable)`
-Adds a `Renderable` element to the document. Elements are drawn in the order they are added.
+### `Document`
 
-### `func (d *Document) AddDef(def string)`
-Injects a raw SVG `<defs>` fragment.
+The SVG canvas. It manages:
 
-### `func (d *Document) Render() (string, error)`
-Composes all elements into a single SVG string.
+- Viewport size (`Width`, `Height`)
+- User coordinate system (`viewBox`, `preserveAspectRatio`)
+- Background color
+- Root renderables (via `Add`)
+- Named layers (via `Layer`)
+- Shared definitions (`AddDef`)
 
-### `func (d *Document) Export(filePath string) error`
-Renders the document and writes it to a file.
+```go
+canvas := doc.NewDocument(800, 600).
+    WithBackground("#0a0a14").
+    WithViewBox(0, 0, 800, 600)
+
+canvas.Layer("bg").Add(draw.NewRect(0, 0, 800, 600, draw.Fill("#111")))
+canvas.Layer("content").Add(
+    draw.NewCircle(400, 300, 80, draw.Fill("#a78bfa")),
+)
+canvas.Export("out.svg")
+```
+
+### `Layer`
+
+A named, ordered group of renderables. Layers are the preferred way to structure
+a document:
+
+- Stable SVG `id` (the layer name)
+- Creation order = draw order
+- Shared transform / opacity via the underlying `draw.Group`
+- Retrievable by name: `doc.Layer("content")` returns the existing layer
+
+```go
+layer := canvas.Layer("iso")
+layer.SetTransform(geom.Isometric())
+layer.Add(draw.NewRect(0, 0, 40, 40, draw.Fill("#f59e0b")))
+```
+
+## Composition model
+
+1. **Root elements** — added with `Document.Add`, drawn first
+2. **Layers** — named groups, drawn after root elements in creation order
+3. **Groups** (`draw.Group`) — nestable containers used inside layers or at root
+
+Prefer layers for document structure. Use groups for local nesting and
+shared transforms inside a layer.

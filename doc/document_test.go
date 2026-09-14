@@ -6,6 +6,7 @@ import (
 
 	"github.com/dominionthedev/finite/doc"
 	"github.com/dominionthedev/finite/draw"
+	"github.com/dominionthedev/finite/geom"
 	"github.com/dominionthedev/finite/instance"
 )
 
@@ -240,5 +241,102 @@ func TestExport(t *testing.T) {
 func TestExportBadPath(t *testing.T) {
 	if err := doc.NewDocument(100, 100).Export("/no/such/path/out.svg"); err == nil {
 		t.Error("expected error for bad path")
+	}
+}
+
+func TestLayer(t *testing.T) {
+	d := doc.NewDocument(800, 600)
+	d.Layer("background").Add(draw.NewRect(0, 0, 800, 600, draw.Fill("#0a0a14")))
+	d.Layer("content").Add(
+		draw.NewCircle(400, 300, 80, draw.Fill("#a78bfa")),
+		draw.NewText("finite", 400, 420, draw.FontSize(24), draw.TextFill("#fff"), draw.Centered()),
+	)
+
+	svg, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(svg, `id="background"`) {
+		t.Error("background layer id missing")
+	}
+	if !strings.Contains(svg, `id="content"`) {
+		t.Error("content layer id missing")
+	}
+	if !strings.Contains(svg, "<circle") {
+		t.Error("circle missing from content layer")
+	}
+	// Same name should return the same layer
+	if d.Layer("content") != d.Layer("content") {
+		t.Error("Layer() should return existing layer for same name")
+	}
+	if len(d.Layers()) != 2 {
+		t.Errorf("expected 2 layers, got %d", len(d.Layers()))
+	}
+}
+
+func TestLayerTransform(t *testing.T) {
+	d := doc.NewDocument(400, 400)
+	d.Layer("iso").
+		SetTransform(geom.Isometric()).
+		Add(draw.NewRect(0, 0, 40, 40, draw.Fill("#f59e0b")))
+
+	svg, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(svg, `id="iso"`) {
+		t.Error("layer id missing")
+	}
+	if !strings.Contains(svg, "transform=") {
+		t.Error("layer transform missing")
+	}
+}
+
+func TestNestedGroups(t *testing.T) {
+	d := doc.NewDocument(400, 400)
+	outer := draw.NewGroup(draw.GroupID("outer")).Translate(50, 50)
+	inner := draw.NewGroup(draw.GroupID("inner"), draw.GroupOpacity(0.8))
+	inner.Add(draw.NewCircle(0, 0, 20, draw.Fill("#34d399")))
+	outer.Add(inner)
+	d.Add(outer)
+
+	svg, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(svg, `id="outer"`) || !strings.Contains(svg, `id="inner"`) {
+		t.Error("nested group ids missing")
+	}
+	if !strings.Contains(svg, "translate") {
+		t.Error("outer translate missing")
+	}
+}
+
+func TestGroupFilter(t *testing.T) {
+	d := doc.NewDocument(200, 200)
+	g := draw.NewGroup(draw.GroupID("glow"), draw.GroupFilter(draw.Glow("g1", 6)))
+	g.Add(draw.NewCircle(100, 100, 40, draw.Fill("#a78bfa")))
+	d.Add(g)
+
+	svg, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(svg, `filter="url(#g1)"`) {
+		t.Error("group filter ref missing")
+	}
+	if !strings.Contains(svg, "feGaussianBlur") {
+		t.Error("filter def missing")
+	}
+}
+
+func TestViewBox(t *testing.T) {
+	d := doc.NewDocument(800, 600).WithViewBox(-100, -50, 200, 100)
+	svg, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(svg, `viewBox="-100 -50 200 100"`) {
+		t.Errorf("viewBox not applied: %s", svg)
 	}
 }
