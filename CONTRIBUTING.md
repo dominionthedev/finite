@@ -4,11 +4,12 @@
 
 1. Implement `widget.Widget` — `Name() string` and `Render() (string, error)`
 2. Always produce clean, valid SVG with no template syntax
-3. Namespace all internal SVG `id` attributes to avoid collisions when the
-   same widget is used multiple times
+3. Namespace all internal SVG `id` attributes with `widget.NewScope` / `NewScopeID`
+   so multiple instances do not collide
 4. Inline all `<defs>` (gradients, filters) within the rendered fragment —
    don't depend on document-level defs
-5. Return `fmt.Errorf("pkg.Type: %w", err)` — always wrap errors with context
+5. Prefer `widget.Composite` when assembling larger components from smaller ones
+6. Return `fmt.Errorf("pkg.Type: %w", err)` — always wrap errors with context
 
 ## Error format
 

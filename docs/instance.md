@@ -1,15 +1,25 @@
 # Module: instance
 
-The `instance` module provides a way to place `Widget` components on a document with geometric transforms.
+Place `widget.Widget` values on a document with geometric transforms.
 
-## API Reference
+## API
 
-### `func At(w widget.Widget, x, y float64, opts ...Option) *Instance`
-Places a widget at a specific `(x, y)` coordinate.
+```go
+instance.At(w, x, y, opts...) *Instance
+```
 
-### Options
-- `WithScale(s float64)`: Scales the widget.
-- `WithRotation(deg float64)`: Rotates the widget in degrees.
+Options (applied in local space, before translation):
 
-## Usage
-`Instance` implements the `doc.Renderable` interface, so it can be added directly to a `doc.Document`.
+- `WithScale(s)`
+- `WithScaleXY(sx, sy)`
+- `WithRotation(deg)`
+- `WithRotationAround(deg, cx, cy)`
+- `WithTransform(m geom.Matrix)` — replaces local transform
+
+`Instance` implements `doc.Renderable`, so it can be added to a document or layer.
+
+```go
+canvas.Layer("ui").Add(
+    instance.At(myWidget, 40, 40, instance.WithScale(0.8)),
+)
+```
