@@ -1,4 +1,6 @@
-// Data visualization example — generating a bar chart programmatically.
+// Bar chart — layers and programmatic geometry.
+//
+// Run: go run ./examples/chart
 package main
 
 import (
@@ -20,28 +22,30 @@ func main() {
 	chartHeight := 400.0 - (margin * 2)
 	barWidth := (chartWidth / float64(len(data))) - 10
 
+	bars := canvas.Layer("bars")
+	labels := canvas.Layer("labels")
+
 	for i, val := range data {
 		h := (val / 100.0) * chartHeight
 		x := margin + float64(i)*(barWidth+10)
 		y := 400.0 - margin - h
 
-		canvas.Add(draw.NewRect(x, y, barWidth, h,
+		bars.Add(draw.NewRect(x, y, barWidth, h,
 			draw.Fill(colors[i%len(colors)]),
 			draw.Opacity(0.9),
 		))
-
-		// Value labels
-		canvas.Add(draw.NewText(fmt.Sprintf("%.0f", val), x+(barWidth/2), y-10,
+		labels.Add(draw.NewText(fmt.Sprintf("%.0f", val), x+(barWidth/2), y-10,
 			draw.FontSize(12),
 			draw.TextFill("#4b5563"),
 			draw.Centered(),
 		))
 	}
 
-	// X-Axis line
-	canvas.Add(draw.NewLine(margin, 400-margin, 800-margin, 400-margin,
-		draw.Stroke("#9ca3af", 2),
-	))
+	canvas.Layer("axis").Add(
+		draw.NewLine(margin, 400-margin, 800-margin, 400-margin,
+			draw.Stroke("#9ca3af", 2),
+		),
+	)
 
 	if err := canvas.Export("chart.svg"); err != nil {
 		fmt.Fprintln(os.Stderr, "export:", err)
