@@ -19,6 +19,8 @@ type Group struct {
 	rawTransform string // used when a raw SVG transform string is provided (e.g. from decode)
 	opacity      float64
 	filter       *Filter
+	clip         *ClipPath
+	mask         *Mask
 	children     []interface{ Render() (string, error) }
 }
 
@@ -55,6 +57,16 @@ func GroupOpacity(o float64) GroupOption {
 // GroupFilter attaches an SVG filter to the entire group.
 func GroupFilter(f *Filter) GroupOption {
 	return func(g *Group) { g.filter = f }
+}
+
+// GroupClip attaches a clipPath to the entire group.
+func GroupClip(c *ClipPath) GroupOption {
+	return func(g *Group) { g.clip = c }
+}
+
+// GroupMask attaches a mask to the entire group.
+func GroupMask(m *Mask) GroupOption {
+	return func(g *Group) { g.mask = m }
 }
 
 // NewGroup creates an empty Group.
@@ -153,10 +165,22 @@ func (g *Group) transformAttr() string {
 func (g *Group) Render() (string, error) {
 	var sb strings.Builder
 
-	// Inline filter def if present
+	// Inline defs (filter, clip, mask)
+	var defs []string
 	if g.filter != nil {
+		defs = append(defs, g.filter.Def())
+	}
+	if g.clip != nil {
+		defs = append(defs, g.clip.Def())
+	}
+	if g.mask != nil {
+		defs = append(defs, g.mask.Def())
+	}
+	if len(defs) > 0 {
 		sb.WriteString("<defs>")
-		sb.WriteString(g.filter.Def())
+		for _, d := range defs {
+			sb.WriteString(d)
+		}
 		sb.WriteString("</defs>")
 	}
 
@@ -172,6 +196,12 @@ func (g *Group) Render() (string, error) {
 	}
 	if g.filter != nil {
 		sb.WriteString(fmt.Sprintf(` filter="%s"`, g.filter.Ref()))
+	}
+	if g.clip != nil {
+		sb.WriteString(fmt.Sprintf(` clip-path="%s"`, g.clip.Ref()))
+	}
+	if g.mask != nil {
+		sb.WriteString(fmt.Sprintf(` mask="%s"`, g.mask.Ref()))
 	}
 	sb.WriteString(">")
 

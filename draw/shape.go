@@ -28,11 +28,13 @@ type fillProvider interface {
 
 type shapeStyle struct {
 	fill        string // hex color or url(#id)
-	fillDef     string // optional gradient/filter def to inline
+	fillDef     string // optional gradient/pattern def to inline
 	stroke      string
 	strokeWidth float64
 	opacity     float64
 	filter      *Filter
+	clip        *ClipPath
+	mask        *Mask
 	transform   string // raw SVG transform attribute value
 }
 
@@ -44,6 +46,12 @@ func (s *shapeStyle) buildDefs() string {
 	}
 	if s.filter != nil {
 		parts = append(parts, s.filter.Def())
+	}
+	if s.clip != nil {
+		parts = append(parts, s.clip.Def())
+	}
+	if s.mask != nil {
+		parts = append(parts, s.mask.Def())
 	}
 	if len(parts) == 0 {
 		return ""
@@ -65,6 +73,12 @@ func (s *shapeStyle) attrString() string {
 	}
 	if s.filter != nil {
 		b.WriteString(fmt.Sprintf(` filter="%s"`, s.filter.Ref()))
+	}
+	if s.clip != nil {
+		b.WriteString(fmt.Sprintf(` clip-path="%s"`, s.clip.Ref()))
+	}
+	if s.mask != nil {
+		b.WriteString(fmt.Sprintf(` mask="%s"`, s.mask.Ref()))
 	}
 	if s.transform != "" {
 		b.WriteString(fmt.Sprintf(` transform="%s"`, s.transform))
@@ -128,6 +142,24 @@ func Transform(m geom.Matrix) ShapeOption {
 // Prefer Transform(geom.Matrix) for type-safe composition.
 func TransformString(t string) ShapeOption {
 	return func(s *shapeStyle) { s.transform = t }
+}
+
+// WithClip attaches a clipPath to the shape.
+func WithClip(c *ClipPath) ShapeOption {
+	return func(s *shapeStyle) { s.clip = c }
+}
+
+// WithMask attaches a mask to the shape.
+func WithMask(m *Mask) ShapeOption {
+	return func(s *shapeStyle) { s.mask = m }
+}
+
+// FillPattern sets a pattern fill. The pattern definition is inlined like gradients.
+func FillPattern(p *Pattern) ShapeOption {
+	return func(s *shapeStyle) {
+		s.fill = p.Ref()
+		s.fillDef = p.Def()
+	}
 }
 
 // Circle represents an SVG <circle> element.

@@ -22,6 +22,9 @@ Finite uses a functional options pattern for styling:
 - `Stroke(color string, width float64)`
 - `Opacity(v float64)`
 - `WithFilter(f *Filter)`
+- `WithClip(c *ClipPath)`
+- `WithMask(m *Mask)`
+- `FillPattern(p *Pattern)`
 - `Transform(m geom.Matrix)` / `TransformString(t string)`
 
 ## Gradients
@@ -51,5 +54,45 @@ g.Add(
 canvas.Add(g)
 ```
 
-Options: `GroupID`, `GroupTransform`, `GroupTransformString`, `GroupOpacity`, `GroupFilter`.
+Options: `GroupID`, `GroupTransform`, `GroupTransformString`, `GroupOpacity`, `GroupFilter`, `GroupClip`, `GroupMask`.
 Chainable methods: `Add`, `Translate`, `Rotate`, `RotateAround`, `Scale`, `ScaleUniform`, `SetTransform`.
+
+
+## Clip paths
+
+Restrict painting to a region:
+
+```go
+draw.NewRect(0, 0, 200, 200,
+    draw.Fill("#a78bfa"),
+    draw.WithClip(draw.ClipCircle("c1", 100, 100, 80)),
+)
+```
+
+Helpers: `ClipCircle`, `ClipRect`, `ClipPathData`, `NewClipPath`.  
+`.ObjectBoundingBox()` switches units.
+
+## Masks
+
+Luminance-based visibility (white = show, black = hide):
+
+```go
+draw.NewCircle(50, 50, 40,
+    draw.Fill("#34d399"),
+    draw.WithMask(draw.MaskRect("m1", 0, 0, 100, 50, "#fff")),
+)
+```
+
+`MaskGradient` inlines a gradient for soft falloff / vignette.
+
+## Patterns
+
+Tiled fills via `FillPattern`:
+
+```go
+draw.NewRect(0, 0, 200, 200,
+    draw.FillPattern(draw.PatternDots("dots", 12, 2, "#6366f1")),
+)
+```
+
+Helpers: `PatternDots`, `PatternStripes`, `NewPattern`.
