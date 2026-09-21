@@ -133,6 +133,9 @@ func main() {
 	for _, w := range report.Warnings() {
 		fmt.Println("warn:", w)
 	}
+	for _, i := range report.Infos() {
+		fmt.Println("info:", i)
+	}
 
 	if err := canvas.Export("output.svg"); err != nil {
 		fmt.Fprintln(os.Stderr, "export:", err)

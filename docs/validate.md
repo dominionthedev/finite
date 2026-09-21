@@ -1,17 +1,36 @@
 # Module: validate
 
-The `validate` module provides tools to audit an SVG document for common issues before export.
+Audit SVG output for structural problems before export.
 
-## Checks Performed
-1. **Well-formed XML**: Ensures the SVG is valid XML.
-2. **Duplicate IDs**: Detects if the same `id` attribute is used more than once.
-3. **Unresolved URL References**: Checks if `url(#id)` references point to existing elements.
-4. **Zero Dimensions**: Warns about elements with zero width/height/radius that will be invisible.
+## Checks
 
-## API Reference
+| Severity | Check |
+|----------|--------|
+| **error** | Malformed XML |
+| **error** | Duplicate `id` values (includes guidance when layer names collide with child `GroupID`s) |
+| **error** | `url(#…)` references to missing ids |
+| **error** | Empty input |
+| **warning** | Missing `xmlns` / `viewBox` on root |
+| **warning** | Zero width/height/radius (invisible geometry) |
+| **info** | Unused paint servers / effects (`linearGradient`, `filter`, `clipPath`, …) |
+| **info** | Empty `<g>` groups |
+| **info** | Document summary (element / group / id counts) |
 
-### `func Document(d *doc.Document) (*Report, error)`
-Validates a Finite document.
+## API
 
-### `func SVG(svg string) (*Report, error)`
-Validates a raw SVG string.
+```go
+report, err := validate.Document(canvas)
+if err != nil { /* render failed */ }
+if !report.Valid() {
+    fmt.Fprintln(os.Stderr, report) // prints all severities
+    os.Exit(1)
+}
+for _, w := range report.Warnings() { fmt.Println("warn:", w) }
+for _, i := range report.Infos()    { fmt.Println("info:", i) }
+```
+
+### Report helpers
+
+- `Valid()` — no errors
+- `Empty()` — no issues at any severity
+- `Errors()` / `Warnings()` / `Infos()` / `Issues()`
