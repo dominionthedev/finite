@@ -47,7 +47,11 @@ func (b badge) Render() (string, error) {
 }
 
 func main() {
-	canvas := doc.NewDocument(800, 600).WithBackground("#0a0a14")
+	canvas := doc.NewDocument(800, 600).
+		WithBackground("#0a0a14").
+		WithTitle("Finite — programmable SVG").
+		WithDescription("Composition demo with layers, isometric geometry, patterns, and widgets.").
+		WithRole("img")
 
 	// ── Background glow (layer) ───────────────────────────────────────────
 	canvas.Layer("atmosphere").Add(

@@ -21,6 +21,10 @@ type Group struct {
 	filter       *Filter
 	clip         *ClipPath
 	mask         *Mask
+	title        string
+	desc         string
+	ariaLabel    string
+	role         string
 	children     []interface{ Render() (string, error) }
 }
 
@@ -67,6 +71,26 @@ func GroupClip(c *ClipPath) GroupOption {
 // GroupMask attaches a mask to the entire group.
 func GroupMask(m *Mask) GroupOption {
 	return func(g *Group) { g.mask = m }
+}
+
+// GroupTitle sets the accessible name for the group.
+func GroupTitle(text string) GroupOption {
+	return func(g *Group) { g.title = text }
+}
+
+// GroupDesc sets the accessible description for the group.
+func GroupDesc(text string) GroupOption {
+	return func(g *Group) { g.desc = text }
+}
+
+// GroupAriaLabel sets aria-label on the group.
+func GroupAriaLabel(label string) GroupOption {
+	return func(g *Group) { g.ariaLabel = label }
+}
+
+// GroupRole sets the ARIA role on the group.
+func GroupRole(role string) GroupOption {
+	return func(g *Group) { g.role = role }
 }
 
 // NewGroup creates an empty Group.
@@ -203,7 +227,9 @@ func (g *Group) Render() (string, error) {
 	if g.mask != nil {
 		sb.WriteString(fmt.Sprintf(` mask="%s"`, g.mask.Ref()))
 	}
+	sb.WriteString(a11yAttrs(g.role, g.ariaLabel))
 	sb.WriteString(">")
+	sb.WriteString(a11yContent(g.title, g.desc))
 
 	for i, child := range g.children {
 		svg, err := child.Render()

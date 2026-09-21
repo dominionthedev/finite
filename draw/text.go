@@ -105,6 +105,26 @@ func TextOpacity(v float64) TextOption {
 	return func(t *Text) { t.style.opacity = v }
 }
 
+// TextTitle sets the accessible name for the text element.
+func TextTitle(text string) TextOption {
+	return func(t *Text) { t.style.title = text }
+}
+
+// TextDesc sets the accessible description for the text element.
+func TextDesc(text string) TextOption {
+	return func(t *Text) { t.style.desc = text }
+}
+
+// TextAriaLabel sets aria-label on the text element.
+func TextAriaLabel(label string) TextOption {
+	return func(t *Text) { t.style.ariaLabel = label }
+}
+
+// TextRole sets the ARIA role on the text element.
+func TextRole(role string) TextOption {
+	return func(t *Text) { t.style.role = role }
+}
+
 // Render generates the SVG XML for the text element.
 func (t *Text) Render() (string, error) {
 	var attrs strings.Builder
@@ -127,6 +147,7 @@ func (t *Text) Render() (string, error) {
 
 	attrs.WriteString(t.style.attrString())
 
-	el := fmt.Sprintf(`<text%s>%s</text>`, attrs.String(), t.content)
+	body := a11yContent(t.style.title, t.style.desc) + xmlEscape(t.content)
+	el := fmt.Sprintf(`<text%s>%s</text>`, attrs.String(), body)
 	return wrap(t.style.buildDefs(), el), nil
 }

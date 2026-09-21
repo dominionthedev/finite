@@ -169,6 +169,7 @@ func SVG(svg string) (*Report, error) {
 
 			if t.Name.Local == "svg" && depth == 1 {
 				hasNS, hasViewBox := false, false
+				role := ""
 				for _, a := range t.Attr {
 					if a.Name.Local == "xmlns" {
 						hasNS = true
@@ -176,12 +177,18 @@ func SVG(svg string) (*Report, error) {
 					if a.Name.Local == "viewBox" {
 						hasViewBox = true
 					}
+					if a.Name.Local == "role" {
+						role = a.Value
+					}
 				}
 				if !hasNS {
 					r.add(SeverityWarning, "root <svg> is missing xmlns attribute")
 				}
 				if !hasViewBox {
 					r.add(SeverityWarning, "root <svg> is missing viewBox attribute")
+				}
+				if role == "img" && !strings.Contains(svg, "<title") {
+					r.add(SeverityWarning, `root <svg role="img"> has no <title> — screen readers may lack an accessible name`)
 				}
 			}
 

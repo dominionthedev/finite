@@ -12,6 +12,17 @@ import (
 	"github.com/dominionthedev/finite/geom"
 )
 
+func xmlEscape(s string) string {
+	replacer := strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		`"`, "&quot;",
+		"'", "&apos;",
+	)
+	return replacer.Replace(s)
+}
+
 // Renderable is anything that can produce an SVG fragment.
 // Shapes, text, groups, layers, and widget instances all implement this.
 type Renderable interface {
@@ -86,6 +97,12 @@ type Document struct {
 	PreserveAspectRatio string
 	Background          string
 
+	// Accessibility (root <svg> role/aria and <title>/<desc> children).
+	Title       string
+	Description string
+	Role        string // e.g. "img"
+	AriaLabel   string
+
 	// root holds elements added via Add (flat list, drawn in order).
 	root []Renderable
 
@@ -126,6 +143,30 @@ func (d *Document) WithViewBox(minX, minY, width, height float64) *Document {
 // WithPreserveAspectRatio sets the preserveAspectRatio attribute.
 func (d *Document) WithPreserveAspectRatio(value string) *Document {
 	d.PreserveAspectRatio = value
+	return d
+}
+
+// WithTitle sets the document accessible name (<title> on the root svg).
+func (d *Document) WithTitle(title string) *Document {
+	d.Title = title
+	return d
+}
+
+// WithDescription sets the document accessible description (<desc>).
+func (d *Document) WithDescription(desc string) *Document {
+	d.Description = desc
+	return d
+}
+
+// WithRole sets the ARIA role on the root <svg> (commonly "img").
+func (d *Document) WithRole(role string) *Document {
+	d.Role = role
+	return d
+}
+
+// WithAriaLabel sets aria-label on the root <svg>.
+func (d *Document) WithAriaLabel(label string) *Document {
+	d.AriaLabel = label
 	return d
 }
 
@@ -194,7 +235,29 @@ func (d *Document) Render() (string, error) {
 	if d.PreserveAspectRatio != "" && d.PreserveAspectRatio != "xMidYMid meet" {
 		sb.WriteString(fmt.Sprintf(` preserveAspectRatio="%s"`, d.PreserveAspectRatio))
 	}
+	if d.Role != "" {
+		sb.WriteString(fmt.Sprintf(` role="%s"`, xmlEscape(d.Role)))
+	}
+	if d.AriaLabel != "" {
+		sb.WriteString(fmt.Sprintf(` aria-label="%s"`, xmlEscape(d.AriaLabel)))
+	}
+	if d.Title != "" && d.Description != "" {
+		sb.WriteString(` aria-labelledby="finite-title finite-desc"`)
+	} else if d.Title != "" {
+		sb.WriteString(` aria-labelledby="finite-title"`)
+	}
 	sb.WriteString(">\n")
+
+	if d.Title != "" {
+		sb.WriteString(`<title id="finite-title">`)
+		sb.WriteString(xmlEscape(d.Title))
+		sb.WriteString("</title>\n")
+	}
+	if d.Description != "" {
+		sb.WriteString(`<desc id="finite-desc">`)
+		sb.WriteString(xmlEscape(d.Description))
+		sb.WriteString("</desc>\n")
+	}
 
 	if len(d.defs) > 0 {
 		sb.WriteString("<defs>\n")

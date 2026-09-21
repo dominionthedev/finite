@@ -340,3 +340,26 @@ func TestViewBox(t *testing.T) {
 		t.Errorf("viewBox not applied: %s", svg)
 	}
 }
+
+func TestDocumentAccessibility(t *testing.T) {
+	d := doc.NewDocument(100, 100).
+		WithTitle("Chart").
+		WithDescription("Sales by quarter").
+		WithRole("img")
+	svg, err := d.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(svg, `role="img"`) {
+		t.Error("role missing")
+	}
+	if !strings.Contains(svg, `aria-labelledby="finite-title finite-desc"`) {
+		t.Error("aria-labelledby missing")
+	}
+	if !strings.Contains(svg, `<title id="finite-title">Chart</title>`) {
+		t.Error("title missing")
+	}
+	if !strings.Contains(svg, `<desc id="finite-desc">Sales by quarter</desc>`) {
+		t.Error("desc missing")
+	}
+}

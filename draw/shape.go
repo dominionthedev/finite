@@ -36,6 +36,10 @@ type shapeStyle struct {
 	clip        *ClipPath
 	mask        *Mask
 	transform   string // raw SVG transform attribute value
+	title       string // accessible name (<title> child)
+	desc        string // accessible description (<desc> child)
+	ariaLabel   string // aria-label attribute
+	role        string // ARIA role
 }
 
 // buildDefs returns the inline <defs> block if the shape needs one.
@@ -83,6 +87,7 @@ func (s *shapeStyle) attrString() string {
 	if s.transform != "" {
 		b.WriteString(fmt.Sprintf(` transform="%s"`, s.transform))
 	}
+	b.WriteString(a11yAttrs(s.role, s.ariaLabel))
 	return b.String()
 }
 
@@ -92,6 +97,15 @@ func wrap(defs, content string) string {
 		return "<g>" + content + "</g>"
 	}
 	return "<g>" + defs + content + "</g>"
+}
+
+// elementMarkup builds a shape element; uses open/close form when title/desc are set.
+func elementMarkup(tag, attrs, title, desc string) string {
+	body := a11yContent(title, desc)
+	if body == "" {
+		return "<" + tag + attrs + "/>"
+	}
+	return "<" + tag + attrs + ">" + body + "</" + tag + ">"
 }
 
 // ShapeOption defines a functional option for configuring a shape's visual properties.
@@ -162,6 +176,26 @@ func FillPattern(p *Pattern) ShapeOption {
 	}
 }
 
+// Title sets the accessible name as a <title> child element.
+func Title(text string) ShapeOption {
+	return func(s *shapeStyle) { s.title = text }
+}
+
+// Desc sets the accessible description as a <desc> child element.
+func Desc(text string) ShapeOption {
+	return func(s *shapeStyle) { s.desc = text }
+}
+
+// AriaLabel sets the aria-label attribute.
+func AriaLabel(label string) ShapeOption {
+	return func(s *shapeStyle) { s.ariaLabel = label }
+}
+
+// Role sets the ARIA role attribute (e.g. "img", "presentation").
+func Role(role string) ShapeOption {
+	return func(s *shapeStyle) { s.role = role }
+}
+
 // Circle represents an SVG <circle> element.
 type Circle struct {
 	cx, cy, r float64
@@ -180,8 +214,8 @@ func NewCircle(cx, cy, r float64, opts ...ShapeOption) *Circle {
 
 // Render generates the SVG XML for the circle.
 func (c *Circle) Render() (string, error) {
-	el := fmt.Sprintf(`<circle cx="%.4f" cy="%.4f" r="%.4f"%s/>`,
-		c.cx, c.cy, c.r, c.style.attrString())
+	attrs := fmt.Sprintf(` cx="%.4f" cy="%.4f" r="%.4f"%s`, c.cx, c.cy, c.r, c.style.attrString())
+	el := elementMarkup("circle", attrs, c.style.title, c.style.desc)
 	return wrap(c.style.buildDefs(), el), nil
 }
 
@@ -203,8 +237,8 @@ func NewEllipse(cx, cy, rx, ry float64, opts ...ShapeOption) *Ellipse {
 
 // Render generates the SVG XML for the ellipse.
 func (e *Ellipse) Render() (string, error) {
-	el := fmt.Sprintf(`<ellipse cx="%.4f" cy="%.4f" rx="%.4f" ry="%.4f"%s/>`,
-		e.cx, e.cy, e.rx, e.ry, e.style.attrString())
+	attrs := fmt.Sprintf(` cx="%.4f" cy="%.4f" rx="%.4f" ry="%.4f"%s`, e.cx, e.cy, e.rx, e.ry, e.style.attrString())
+	el := elementMarkup("ellipse", attrs, e.style.title, e.style.desc)
 	return wrap(e.style.buildDefs(), el), nil
 }
 
@@ -248,8 +282,9 @@ func (r *Rect) Render() (string, error) {
 	if r.rx > 0 {
 		rx = fmt.Sprintf(` rx="%.4f" ry="%.4f"`, r.rx, r.ry)
 	}
-	el := fmt.Sprintf(`<rect x="%.4f" y="%.4f" width="%.4f" height="%.4f"%s%s/>`,
+	attrs := fmt.Sprintf(` x="%.4f" y="%.4f" width="%.4f" height="%.4f"%s%s`,
 		r.x, r.y, r.w, r.h, rx, r.style.attrString())
+	el := elementMarkup("rect", attrs, r.style.title, r.style.desc)
 	return wrap(r.style.buildDefs(), el), nil
 }
 
@@ -271,8 +306,8 @@ func NewLine(x1, y1, x2, y2 float64, opts ...ShapeOption) *Line {
 
 // Render generates the SVG XML for the line.
 func (l *Line) Render() (string, error) {
-	el := fmt.Sprintf(`<line x1="%.4f" y1="%.4f" x2="%.4f" y2="%.4f"%s/>`,
-		l.x1, l.y1, l.x2, l.y2, l.style.attrString())
+	attrs := fmt.Sprintf(` x1="%.4f" y1="%.4f" x2="%.4f" y2="%.4f"%s`, l.x1, l.y1, l.x2, l.y2, l.style.attrString())
+	el := elementMarkup("line", attrs, l.style.title, l.style.desc)
 	return wrap(l.style.buildDefs(), el), nil
 }
 
@@ -331,6 +366,7 @@ func (p *Path) SetD(d string) *Path {
 
 // Render generates the SVG XML for the path.
 func (p *Path) Render() (string, error) {
-	el := fmt.Sprintf(`<path d="%s"%s/>`, strings.TrimSpace(p.d.String()), p.style.attrString())
+	attrs := fmt.Sprintf(` d="%s"%s`, strings.TrimSpace(p.d.String()), p.style.attrString())
+	el := elementMarkup("path", attrs, p.style.title, p.style.desc)
 	return wrap(p.style.buildDefs(), el), nil
 }

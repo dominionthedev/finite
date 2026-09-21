@@ -26,6 +26,7 @@ Finite uses a functional options pattern for styling:
 - `WithMask(m *Mask)`
 - `FillPattern(p *Pattern)`
 - `Transform(m geom.Matrix)` / `TransformString(t string)`
+- `Title` / `Desc` / `AriaLabel` / `Role` (accessibility)
 
 ## Gradients
 

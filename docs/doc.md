@@ -65,3 +65,15 @@ layer.Add(draw.NewRect(0, 0, 40, 40, draw.Fill("#f59e0b")))
 
 Prefer layers for document structure. Use groups for local nesting and
 shared transforms inside a layer.
+
+
+## Accessibility
+
+```go
+canvas := doc.NewDocument(800, 600).
+    WithTitle("Quarterly revenue").
+    WithDescription("Bar chart of revenue by quarter for 2025.").
+    WithRole("img")
+```
+
+Emits root `<title>` / `<desc>`, `role`, and `aria-labelledby` when appropriate.
