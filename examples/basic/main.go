@@ -97,7 +97,7 @@ func main() {
 
 	// ── Isometric sample (geom) ───────────────────────────────────────────
 	iso := draw.NewGroup(
-		draw.GroupID("iso"),
+		draw.GroupID("basiciso"),
 		draw.GroupTransform(geom.Compose(geom.Translate(120, 440), geom.Isometric())),
 	)
 	iso.Add(
