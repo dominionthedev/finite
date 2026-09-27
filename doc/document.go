@@ -307,13 +307,22 @@ func (d *Document) Render() (string, error) {
 	return sb.String(), nil
 }
 
+// Bytes renders the document and returns the SVG as a byte slice.
+func (d *Document) Bytes() ([]byte, error) {
+	svg, err := d.Render()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(svg), nil
+}
+
 // Export renders the document and writes it to filePath.
 func (d *Document) Export(filePath string) error {
-	svg, err := d.Render()
+	b, err := d.Bytes()
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filePath, []byte(svg), 0644); err != nil {
+	if err := os.WriteFile(filePath, b, 0644); err != nil {
 		return fmt.Errorf("doc.Export: write failed for %q: %w", filePath, err)
 	}
 	return nil

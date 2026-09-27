@@ -8,7 +8,8 @@ The `draw` module contains the primitive SVG shapes, text, and styling options.
 - `Ellipse`: `<ellipse>` element.
 - `Rect`: `<rect>` element (supports rounded corners).
 - `Line`: `<line>` element.
-- `Path`: `<path>` element with a fluent builder API (`M`, `L`, `C`, `Q`, `Z`).
+- `Path`: `<path>` element with a fluent builder API (`M`, `L`, `H`, `V`, `C`, `Q`, `A`, `Z`).
+- `Polygon` / `Polyline`: point-list shapes (`draw.Pt`, `draw.Point`).
 
 ## Text
 
@@ -19,7 +20,8 @@ The `draw` module contains the primitive SVG shapes, text, and styling options.
 Finite uses a functional options pattern for styling:
 - `Fill(color string)`
 - `FillGradient(g fillProvider)`
-- `Stroke(color string, width float64)`
+- `Stroke(color string, width float64)` / `NoFill()`
+- `StrokeDash` / `StrokeLinecap` / `StrokeLinejoin`
 - `Opacity(v float64)`
 - `WithFilter(f *Filter)`
 - `WithClip(c *ClipPath)`

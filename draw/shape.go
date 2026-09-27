@@ -27,19 +27,22 @@ type fillProvider interface {
 }
 
 type shapeStyle struct {
-	fill        string // hex color or url(#id)
-	fillDef     string // optional gradient/pattern def to inline
-	stroke      string
-	strokeWidth float64
-	opacity     float64
-	filter      *Filter
-	clip        *ClipPath
-	mask        *Mask
-	transform   string // raw SVG transform attribute value
-	title       string // accessible name (<title> child)
-	desc        string // accessible description (<desc> child)
-	ariaLabel   string // aria-label attribute
-	role        string // ARIA role
+	fill          string // hex color, "none", or url(#id)
+	fillDef       string // optional gradient/pattern def to inline
+	stroke        string
+	strokeWidth   float64
+	strokeDash    string // e.g. "4 2"
+	strokeLinecap string // butt | round | square
+	strokeLinejoin string // miter | round | bevel
+	opacity       float64
+	filter        *Filter
+	clip          *ClipPath
+	mask          *Mask
+	transform     string // raw SVG transform attribute value
+	title         string // accessible name (<title> child)
+	desc          string // accessible description (<desc> child)
+	ariaLabel     string // aria-label attribute
+	role          string // ARIA role
 }
 
 // buildDefs returns the inline <defs> block if the shape needs one.
@@ -70,7 +73,19 @@ func (s *shapeStyle) attrString() string {
 		b.WriteString(fmt.Sprintf(` fill="%s"`, s.fill))
 	}
 	if s.stroke != "" {
-		b.WriteString(fmt.Sprintf(` stroke="%s" stroke-width="%.4f"`, s.stroke, s.strokeWidth))
+		b.WriteString(fmt.Sprintf(` stroke="%s"`, s.stroke))
+		if s.strokeWidth > 0 {
+			b.WriteString(fmt.Sprintf(` stroke-width="%.4f"`, s.strokeWidth))
+		}
+		if s.strokeDash != "" {
+			b.WriteString(fmt.Sprintf(` stroke-dasharray="%s"`, s.strokeDash))
+		}
+		if s.strokeLinecap != "" {
+			b.WriteString(fmt.Sprintf(` stroke-linecap="%s"`, s.strokeLinecap))
+		}
+		if s.strokeLinejoin != "" {
+			b.WriteString(fmt.Sprintf(` stroke-linejoin="%s"`, s.strokeLinejoin))
+		}
 	}
 	if s.opacity > 0 && s.opacity != 1.0 {
 		b.WriteString(fmt.Sprintf(` opacity="%.4f"`, s.opacity))
@@ -134,6 +149,29 @@ func Stroke(color string, width float64) ShapeOption {
 		s.stroke = color
 		s.strokeWidth = width
 	}
+}
+
+// NoFill sets fill to none (useful for stroked outlines).
+func NoFill() ShapeOption {
+	return func(s *shapeStyle) {
+		s.fill = "none"
+		s.fillDef = ""
+	}
+}
+
+// StrokeDash sets stroke-dasharray (e.g. "4 2" or "8,4,2,4").
+func StrokeDash(pattern string) ShapeOption {
+	return func(s *shapeStyle) { s.strokeDash = pattern }
+}
+
+// StrokeLinecap sets stroke-linecap: "butt", "round", or "square".
+func StrokeLinecap(value string) ShapeOption {
+	return func(s *shapeStyle) { s.strokeLinecap = value }
+}
+
+// StrokeLinejoin sets stroke-linejoin: "miter", "round", or "bevel".
+func StrokeLinejoin(value string) ShapeOption {
+	return func(s *shapeStyle) { s.strokeLinejoin = value }
 }
 
 // Opacity sets the overall opacity (0.0 to 1.0) of the shape.
@@ -354,6 +392,25 @@ func (p *Path) Q(cx, cy, x, y float64) *Path {
 // Z closes the current subpath.
 func (p *Path) Z() *Path {
 	p.d.WriteString("Z")
+	return p
+}
+
+// H adds a horizontal LineTo command.
+func (p *Path) H(x float64) *Path {
+	fmt.Fprintf(&p.d, "H%.4f ", x)
+	return p
+}
+
+// V adds a vertical LineTo command.
+func (p *Path) V(y float64) *Path {
+	fmt.Fprintf(&p.d, "V%.4f ", y)
+	return p
+}
+
+// A adds an elliptical Arc command.
+// rx, ry: radii; rot: x-axis rotation in degrees; large, sweep: flags (0 or 1); x, y: end point.
+func (p *Path) A(rx, ry, rot float64, large, sweep int, x, y float64) *Path {
+	fmt.Fprintf(&p.d, "A%.4f,%.4f %.4f %d,%d %.4f,%.4f ", rx, ry, rot, large, sweep, x, y)
 	return p
 }
 
