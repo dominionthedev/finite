@@ -4,12 +4,12 @@ Finite is a Go library for **programmatically creating visuals**. SVG is the
 medium and system behind those visuals — the representation layer — not the
 primary mental model.
 
-You compose scenes, layers, shapes, and widgets in Go. Finite turns that
+You compose visuals, layers, shapes, and widgets in Go. Finite turns that
 composition into clean, scalable SVG.
 
 ## Features
 
-- **Scene model** — `finite.New` → layers → groups → shapes / widgets
+- **Visual model** — `finite.New` → layers → groups → shapes / widgets
 - **Geometry** — affine transforms, isometric / oblique helpers
 - **Drawing** — shapes, paths (incl. arcs), polygons, polylines, text
 - **Paint & effects** — fills, strokes (dash / cap / join), gradients, filters, clip, mask, pattern
@@ -35,12 +35,12 @@ import (
 )
 
 func main() {
-	scene := finite.New(800, 600).
+	visual := finite.New(800, 600).
 		WithBackground("#0a0a14").
 		WithTitle("Orb").
 		WithRole("img")
 
-	scene.Layer("content").Add(
+	visual.Layer("content").Add(
 		draw.NewCircle(400, 300, 100,
 			draw.Fill("#a78bfa"),
 			draw.WithFilter(draw.Glow("g", 8)),
@@ -50,7 +50,7 @@ func main() {
 		}, draw.Stroke("#6366f1", 2), draw.StrokeDash("6 4")),
 	)
 
-	_ = scene.Export("output.svg")
+	_ = visual.Export("output.svg")
 }
 ```
 
@@ -58,8 +58,8 @@ func main() {
 
 | Package | Role |
 |---------|------|
-| `finite` | Entry: `New` → `Scene` |
-| [`doc`](./docs/doc.md) | Scene/document, layers, viewBox, a11y |
+| `finite` | Entry: `New` → `Visual` |
+| [`doc`](./docs/doc.md) | Visual/document, layers, viewBox, a11y |
 | [`draw`](./docs/draw.md) | Shapes, text, paint, effects, groups |
 | [`geom`](./docs/geom.md) | Affine matrices and transforms |
 | [`widget`](./docs/widget.md) | Reusable components |

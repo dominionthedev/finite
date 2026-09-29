@@ -247,7 +247,7 @@ func Compose(ms ...Matrix) Matrix {
 
 // Isometric returns a common isometric projection transform.
 // It applies: rotate(30°) → skewX(-30°) → scaleY(√3/2 ≈ 0.866).
-// This is a convenient starting point for isometric scenes.
+// This is a convenient starting point for isometric layouts.
 func Isometric() Matrix {
 	return Compose(
 		Rotate(30),

@@ -8,17 +8,17 @@ import (
 	"github.com/dominionthedev/finite/draw"
 )
 
-func TestNewScene(t *testing.T) {
-	s := finite.New(400, 300).WithBackground("#111")
-	s.Layer("main").Add(draw.NewCircle(200, 150, 40, draw.Fill("#a78bfa")))
-	svg, err := s.Render()
+func TestNewVisual(t *testing.T) {
+	v := finite.New(400, 300).WithBackground("#111")
+	v.Layer("main").Add(draw.NewCircle(200, 150, 40, draw.Fill("#a78bfa")))
+	svg, err := v.Render()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(svg, "<circle") {
 		t.Fatal("missing circle")
 	}
-	b, err := s.Bytes()
+	b, err := v.Bytes()
 	if err != nil {
 		t.Fatal(err)
 	}
